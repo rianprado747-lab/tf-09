@@ -145,7 +145,39 @@ class Lixeira(Medivel):
         for arquivo in self.__descartados:
             total = total + arquivo.tamanho()
         return total
+# Clase atalho 
+class Atalho(Item):
+    __slots__ = ('__destino',)
 
+    def __init__(self, nome, destino, pai = None):
+        super().__init__(nome,pai)
+        self.redirecionar(destino)
+
+    @property
+    def destino(self):
+        return self.__destino
+
+
+    def redirecionar(self, novo_destino):
+        if novo_destino is self:
+            raise ValueError('O atalho não pode apontar para ele mesmo')
+
+        ancestral = self.pai
+        while ancestral is not None:
+            if ancestral is novo_destino:
+                raise ValueError('O destino não pode ser uma pasta que contém o atalho')
+            ancestral = ancestral.pai
+
+        self.__destino = novo_destino
+
+
+    def tamanho(self):
+        return 1
+
+
+    def mostrar(self):
+        recuo = '   ' * self.profundidade()
+        print(recuo + self.nome + " -> " + self.destino.caminho())
 
 # Quem usa o contrato não sabe (nem quer saber) quem está do outro lado.
 def espaco_total(coisas):
@@ -162,3 +194,43 @@ def tentar(rotulo, acao):
     except Exception as erro:
         print(rotulo, "->", type(erro).__name__ + ":", erro)
 
+
+disco = Pasta("C:")
+usuarios = Pasta("Users", disco)
+rian = Pasta("Rian Prado", usuarios)
+desktop = Pasta("Desktop", rian)
+documentos = Pasta("Documentos", rian)
+
+texto = Arquivo("anotacoes.txt", 300, desktop)
+foto = Arquivo("perfil.png", 2000, rian)
+
+atalho_foto = Atalho("atalho_foto.lnk", foto, desktop)
+atalho_docs = Atalho("atalho_docs.lnk", documentos, desktop)
+
+
+print("\n--- ÁRVORE COMPLETA ---")
+disco.mostrar()
+
+
+lixeira = Lixeira()
+lixeira.descartar(Arquivo("temp.tmp", 150))
+
+print("\n--- ESPAÇO TOTAL ---")
+# O arquivo 'texto' tem 300 bytes.
+# A pasta 'desktop' tem o arquivo 'texto' (300) + atalho_foto (1) + atalho_usuarios (1) = 302 bytes.
+# A 'lixeira' tem 150 bytes.
+# Total esperado: 300 + 302 + 150 = 752 bytes.
+lista_de_coisas = [texto, desktop, lixeira]
+print("Total calculado:", espaco_total(lista_de_coisas), "bytes")
+
+# 4. Três tentativas que precisam falhar (validações do Atalho)
+print("\n--- TENTATIVAS DE QUEBRA ---")
+
+# Falha 1: Tentar alterar o destino usando o sinal de igual (encapsulamento sem setter)
+tentar("Mudar destino com '='", lambda: setattr(atalho_foto, "destino", texto))
+
+# Falha 2: Tentar fazer o atalho apontar para ele mesmo
+tentar("Atalho apontar para si", lambda: atalho_foto.redirecionar(atalho_foto))
+
+# Falha 3: Tentar fazer o atalho apontar para uma pasta que já o contém (ancestral)
+tentar("Atalho apontar para o avô (Users)", lambda: atalho_foto.redirecionar(usuarios))
